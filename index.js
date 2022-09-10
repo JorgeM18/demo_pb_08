@@ -1,184 +1,79 @@
-const express = require('express');
-const { products, users } = require('./data/data');
+const express = require("express");
+//importamos las rutas
+const apiRoutes = require("./routers/app.routers");
 
+//importamos el modulo path (modulo nativo de NodeJS), nos ayuda con las rutas q' debamos colocar
+const path = require("path");
+
+//instancia de express
 const app = express();
+//Puerto
 const PORT = process.env.PORT || 8080;
 
-// Middlewares
+/* 
+Que es un middllewares? Una función.
+(use) aplica para TODOS los metodos (get,put,post,delete)
+
+Todos los metodos get, post, put, etc son considerados como Middllewares. Estos son discriminados de manera distinta porque:
+Queremos que se ejecute antes de la definición de nuestras rutas (routes), lo que se busca con los middllewares
+es que el cliente haga una peticion (Objeto REQ), luego definimos un middlleware (CAPA MEDIA espanol) para esa peticion 
+y se atiende esa peticion con la respuesta del (Obj RES)
+
+Desde el middlleware se le puede entregar y cortar la respuesta al usuario sin que el servidor busque nuestras rutas para esa respuesta.
+*/
+// Middlewares a nivel de aplicación
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+/* 
+express.static(), con este metodo se puede servir todos los archivos staticos que querramos si le damos 1 ruta.
+
+Si dentro de la ruta que le pasemos hay un archivo con el nombre: index.html no es necesario pasarlo como ruta home ( / )
+
+Normalmente esta carpeta es nombrada como "public" dentro de proyectos.
+
+Si necesitamos agregar otras paginas html solo se agregan a la carpeta public
+*/
+app.use(express.static("public"));
+
+/* 
+app.get("/", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "./nav-app/index.html"));
+});
+
+app.get("/styles.css", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "./nav-app/styles.css"));
+});
+
+app.get("/browser-app.js", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "./nav-app/browser-app.js"));
+});
+
+app.get("/logo.svg", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "./nav-app/logo.svg"));
+}); */
+
 // Routes
-app.get('/api/products', (req, res) => {
-  const { maxPrice, search } = req.query;
-  let productsResponse = [...products];
-  if (Object.keys(req.query).length > 0) {
-    if (maxPrice) {
-      if (isNaN(+maxPrice)) {
-        return res.status(400).json({success: false, error: 'maxPrice must be a valid number'});
-      }
-      productsResponse = productsResponse.filter(product => product.price <= +maxPrice);
-    }
-    if (search) {
-      productsResponse = productsResponse.filter(product => product.name.toLowerCase().startsWith(search.toLowerCase()))
-    }
-    return res.json({success: true, result: productsResponse });
-  }
-    return res.json({success: true, result: productsResponse });
-});
+app.use("/api", apiRoutes);
 
-app.get('/api/products/:productId', (req, res) => {
-  const { productId } = req.params;
-  const product = products.find(product => product.id === +productId);
-  if (!product) {
-    return res.status(404).json({ success: false, error: `Product with id: ${productId} does not exist!`});
-  }
-  return res.json({ success: true, result: product });
-});
-
-app.post('/api/products', (req, res) => {
-  const { name, description, price, image } = req.body;
-  if ( !name || !description || !price || !image) {
-    return res.status(400).json({ succes: false, error: 'Wrong body format' });
-  }
-  const newProduct = {
-    id: products.length + 1,
-    name,
-    description,
-    price,
-    image
-  };
-  products.push(newProduct);
-  return res.json({ success: true, result: newProduct });
-});
-
-app.put('/api/products/:productId', (req, res) => {
-  const { params: { productId }, body: { name, description, price, image} } = req;
-  if ( !name || !description || !price || !image) {
-    return res.status(400).json({ success: false, error: 'Wrong body format' });
-  };
-  const productIndex = products.findIndex((product) => product.id === +productId);
-  if (productIndex < 0) return res.status(404).json({ success: false, error: `Product with id: ${productId} does not exist!`});
-  const newProduct = {
-    ...products[productIndex],
-    name,
-    description,
-    price,
-    image
-  };
-  products[productIndex] = newProduct;
-  return res.json({ success: true, result: newProduct});
-});
-
-app.delete('/api/products/:productId', (req, res) => {
-  const { productId } = req.params;
-  const productIndex = products.findIndex(product => product.id === +productId);
-  if (productIndex < 0) return res.status(404).json({ success: false, error: `Product with id ${productId} does not exist!`});
-  products.splice(productIndex, 1);
-  return res.json({ success: true, result: 'product correctly eliminated' });
-});
-
-app.get('/api/users', (req,res) => {
-  const { role, search } = req.query;
-  let userResponse = [...users];
-  if (Object.keys(req.query).length > 0) {
-    if (role) {
-      userResponse = userResponse.filter(user => user.role === role.toLowerCase());
-    }
-    if (search) {
-      userResponse = userResponse.filter(user => 
-        user.name.toLowerCase().includes(search.toLowerCase()) ||
-        user.lastname.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-    return res.json({ success: true, result: userResponse });
-  }
-    return res.json({ success: true, result: userResponse });
-});
-
-app.get('/api/users/:userId', (req, res) => {
-  const { userId } = req.params;
-  if (isNaN(+userId) || +userId < 0 || +userId % 1 !== 0) {
-    return res.status(400).json({ success: false, error: 'userId must be a positive integer valid number' });
-  }
-  const user = users.find(user => user.id === +userId);
-  if (!user) {
-    return res.status(404).json({ success: false, error: `User with id ${userId} is not in our records!` }); 
-  }
-  return res.json({ success: true, result: user });
-});
-
-app.post('/api/users', (req,res) => {
-  const { name, lastname, age, email, role } = req.body || {};
-  if (!name || !lastname || !age || !email || !role) {
-    let requiredFields = [];
-    if (!name) requiredFields.push('name');
-    if (!lastname) requiredFields.push('lastname');
-    if (!age) requiredFields.push('age');
-    if (!email) requiredFields.push('email');
-    if (!role) requiredFields.push('role');
-    return res.status(400).json({ success: false, error: `Following fields are required: ${requiredFields.join(', ')}`})
-  }
-  const newUser = {
-    id: users[users.length - 1].id + 1,
-    name,
-    lastname,
-    age,
-    email,
-    role
-  };
-  users.push(newUser);
-  return res.json({ success: true, result: newUser});
-});
-
-app.put('/api/users/:userId', (req, res) => {
-  const { params: { userId }, body: { name, lastname, age, email, role } } = req;
-  if (isNaN(+userId) || +userId < 0 || +userId % 1 !== 0) {
-    return res.status(400).json({ success: false, error: 'userId must be a positive integer valid number' });
-  }
-  const userIndex = users.findIndex( user => user.id === +userId);
-  if (userIndex < 0) {
-    return res.status(404).json({ success: false, error: `User with id ${userId} is not in our records!` });
-  } 
-  if (!name || !lastname || !age || !email || !role) {
-    let requiredFields = [];
-    if (!name) requiredFields.push('name');
-    if (!lastname) requiredFields.push('lastname');
-    if (!age) requiredFields.push('age');
-    if (!email) requiredFields.push('email');
-    if (!role) requiredFields.push('role');
-    return res.status(400).json({ success: false, error: `Following fields are required: ${requiredFields.join(', ')}`})
-  }
-  const modifiedUser = {
-    ...users[userIndex],
-    name,
-    lastname,
-    age,
-    email,
-    role
-  };
-  users[userIndex] = modifiedUser;
-  return res.json({ success: true, result: modifiedUser });
-});
-
-app.delete('/api/users/:userId', (req, res) => {
-  const { userId } = req.params;
-  if (isNaN(+userId) || +userId < 0 || +userId % 1 !== 0) {
-    return res.status(400).json({ success: false, error: 'userId must be a positive integer valid number' });
-  }
-  const userIndex = users.findIndex( user => user.id === +userId);
-  if (userIndex < 0) {
-    return res.status(404).json({ success: false, error: `User with id ${userId} is not in our records!` });
-  } 
-  const eliminatedUser = users[userIndex];
-  users.splice(userIndex, 1);
-  return res.json({ success: true, result: eliminatedUser });
-});
-
-const connectedServer = app.listen(PORT, ()=> {
+//Ejecución del metodo Listen
+const connectedServer = app.listen(PORT, () => {
   console.log(`Server is up and running on port ${PORT}`);
 });
 
-connectedServer.on('error', (error) => {
-  console.error('Error: ', error);
-})
+//Manejo de errores que pueda provenir de la falla de conexión
+connectedServer.on("error", (error) => {
+  console.error("Error: ", error);
+});
+
+/* 
+rutas de la pagina:
+  Todos los productos:
+  - http://localhost:8080/api/products
+
+  Buscar producto por ID:
+  - http://localhost:8080/api/products/1
+
+  Filtrar productos por maxPrice
+  -http://localhost:8080/api/products?maxPrice=300 (Todos los prodcutso que su valor no pasa de 300)
+*/
