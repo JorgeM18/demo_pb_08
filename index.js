@@ -1,6 +1,8 @@
 const express = require("express");
 //importamos las rutas
 const apiRoutes = require("./routers/app.routers");
+//Importamos la funcion de logger
+const loggerMiddlewares = require("./middlewares/logger");
 
 //importamos el modulo path (modulo nativo de NodeJS), nos ayuda con las rutas q' debamos colocar
 const path = require("path");
@@ -21,6 +23,7 @@ y se atiende esa peticion con la respuesta del (Obj RES)
 
 Desde el middlleware se le puede entregar y cortar la respuesta al usuario sin que el servidor busque nuestras rutas para esa respuesta.
 */
+
 // Middlewares a nivel de aplicación
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -34,9 +37,12 @@ Normalmente esta carpeta es nombrada como "public" dentro de proyectos.
 
 Si necesitamos agregar otras paginas html solo se agregan a la carpeta public
 */
+
 app.use(express.static("public"));
 
 /* 
+De esta manera se definen las rutas sin el metodo static de express:
+
 app.get("/", (req, res) => {
   res.sendFile(path.resolve(__dirname, "./nav-app/index.html"));
 });
@@ -52,6 +58,19 @@ app.get("/browser-app.js", (req, res) => {
 app.get("/logo.svg", (req, res) => {
   res.sendFile(path.resolve(__dirname, "./nav-app/logo.svg"));
 }); */
+
+//Definiendo el parametro Next:
+//Esta es una forma pero NO es considerado buenas practicas al tener demasiados.
+/* app.use((req, res, next) => {
+  const method = req.method;
+  const url = req.url;
+  const year = new Date().getFullYear();
+  console.log(`[${method}] => ${url}`, year);
+  next();
+}); */
+
+//De esta manera importamos nuestro Middlewares
+app.use(loggerMiddlewares);
 
 // Routes
 app.use("/api", apiRoutes);
